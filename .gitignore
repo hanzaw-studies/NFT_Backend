@@ -1,0 +1,39 @@
+# Maven build
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Eclipse / Spring Tool Suite / IntelliJ IDEA
+.classpath
+.project
+.settings/
+.springBeans
+.apt_generated/
+.factorypath
+.sts4-cache/
+
+# IntelliJ IDEA (if you ever use it)
+*.iml
+.idea/
+out/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jetty / Tomcat / application servers
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar

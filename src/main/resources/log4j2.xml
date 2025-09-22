@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    
+    <!-- Appenders -->
+    <Appenders>
+
+        <!-- Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%-7p %d [%t] %c %x - %m%n"/>
+        </Console>
+
+        <!-- Rolling File Appender -->
+        <RollingFile name="File" 
+                     fileName="/Users/hanzaw/Programming/logs/NFT_Backend.log"
+                     filePattern="/Users/hanzaw/Programming/logs/NFT_Backend-%d{yyyy-MM-dd}-%i.log.gz">
+            
+            <PatternLayout>
+                <Pattern>%-7p [%d] [%t] %c %x - %m%n</Pattern>
+            </PatternLayout>
+
+            <!-- Roll over policy -->
+            <Policies>
+                <!-- Size-based rollover (15MB) -->
+                <SizeBasedTriggeringPolicy size="15MB"/>
+            </Policies>
+
+            <!-- Keep max 8 rolled files -->
+            <DefaultRolloverStrategy max="8"/>
+        </RollingFile>
+
+    </Appenders>
+
+    <!-- Loggers -->
+    <Loggers>
+        <!-- Logger for your package -->
+        <Logger name="edu.aut.comp726.webservice" level="debug" additivity="false">
+            <AppenderRef ref="File"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <!-- Root logger -->
+        <Root level="info">
+            <AppenderRef ref="File"/>
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
+
+
+
+<!--<Configuration status="WARN">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="Console"/>
+    </Root>
+    <Logger name="edu.aut.comp726.webservice" level="debug" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+  </Loggers>
+</Configuration>-->
