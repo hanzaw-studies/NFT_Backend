@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans 
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/tx 
+		http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context.xsd"
+        default-lazy-init="false">
+        
+        <bean id="pinataConfigInfo" class="edu.aut.comp726.webservice.data.PinataConfigInfo" depends-on="simplePropertyPlaceholderConfigurer">
+        	<property name="pinataApiUrl"><value>${pinata.api.url}</value></property>
+        	<property name="pintaJwt"><value>${pinata.jwt}</value></property>
+        </bean>
+        
+        <bean id="imageNFTContractInfo" class="edu.aut.comp726.webservice.data.ImageNFTContractInfo" depends-on="simplePropertyPlaceholderConfigurer">
+        	<property name="contractAddress"><value>${contract.address}</value></property>
+        </bean>
+        
+        <!-- Define the HttpService bean -->
+        <bean id="httpService" class="org.web3j.protocol.http.HttpService">
+        	<constructor-arg value="${alchemy.api.url}" />
+        </bean>
+  
+	    <!-- Define the Web3j bean -->
+	    <bean id="web3j" class="org.web3j.protocol.Web3j" factory-method="build">
+	        <constructor-arg ref="httpService" />
+	    </bean>        
+        
+</beans>
