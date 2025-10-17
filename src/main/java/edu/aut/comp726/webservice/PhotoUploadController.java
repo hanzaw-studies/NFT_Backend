@@ -36,6 +36,7 @@ import edu.aut.comp726.webservice.data.GenerateHashResponse;
 import edu.aut.comp726.webservice.data.NFTMetadata;
 import edu.aut.comp726.webservice.data.PinataConfigInfo;
 import edu.aut.comp726.webservice.data.PinataResponseInfo;
+import edu.aut.comp726.webservice.data.VerificationDetails;
 import edu.aut.comp726.webservice.data.VerifyImageResponse;
 
 import java.io.File;
@@ -347,7 +348,11 @@ public class PhotoUploadController {
 		
 		try {
 			
+			logger.info("[PhotoUploadController][verifyImage()]");
+			
 			String imageHash = body.get("imageHash");
+			
+			logger.info("[PhotoUploadController][verifyImage()] imageHash: " + imageHash);
 			
 			if (imageHash == null || (!imageHash.startsWith("0x")) || (imageHash.length() != 66)) {
 				response.setMessage("Invalid hash format");
@@ -356,6 +361,8 @@ public class PhotoUploadController {
 			
 			boolean exists = nftService.isImageHashExists(imageHash);
 			
+			logger.info("[PhotoUploadController][verifyImage()] isImageHashExists on Smart Contract: " + exists);
+			
 			if (!exists) {
 				response.setExists(false);
 				response.setVerified(false);
@@ -363,25 +370,81 @@ public class PhotoUploadController {
 				return ResponseEntity.status(HttpStatus.OK).body(response);
 			}
 			
-			BigInteger tokenId = hashCacheService.getTokenIdByHash(imageHash);
+			// --- DIRECT BLOCKCHAIN LOOKUP ---
+			//BigInteger tokenId = nftService.getTokenIdByHash(imageHash);
 			
-			if (tokenId != null) {
-				// We found the token ID via the cache!
-				response.setExists(true);
-				response.setVerified(true);
-				response.setTokenId(tokenId.longValue());
-				response.setMessage("Image found via direct contract hash check.");
+			VerificationDetails objVerificationDetails = nftService.verifyImageByHash(imageHash);
+			
+			if (objVerificationDetails != null) {
+				logger.info("[PhotoUploadController][verifyImage()] objVerificationDetails is not null ...");
 				
-				return ResponseEntity.status(HttpStatus.OK).body(response);
+				if (objVerificationDetails.isExists()) {
+					
+					logger.info("[PhotoUploadController][verifyImage()] imageHash exists on contract");
+					
+					BigInteger tokenId = objVerificationDetails.getTokenId();
+					
+					logger.info("[PhotoUploadController][verifyImage()] tokenId: " + tokenId);
+					
+		            // The smart contract is expected to return 0 if the hash is registered but no token ID is mapped (e.g., hash exists but minting failed).
+		            // More commonly, it returns 0 if the hash doesn't exist at all, but we already handled that with isImageHashExists.
+					if (tokenId.compareTo(BigInteger.ZERO) > 0) {
+						// We found the token ID directly from the blockchain!
+						
+						logger.info("[PhotoUploadController][verifyImage()] tokenId: " + tokenId + " is greater than zero ...");
+						
+						response.setExists(true);
+						response.setVerified(true);
+						response.setTokenId(tokenId.longValue());
+						response.setMessage("Image found via direct blockchain lookup.");
+						
+						logger.info("[PhotoUploadController][verifyImage()] tokenId found on blockchain");
+						
+						return ResponseEntity.status(HttpStatus.OK).body(response);
+					} else {
+						
+						logger.info("[PhotoUploadController][verifyImage()] tokenId: " + tokenId + " is NOT greater than zero ...");
+						
+						// This indicates the hash is in the contract registry (isImageHashExists was true)
+		                // but the token ID lookup failed (returned 0). This is a contract inconsistency.
+						response.setExists(true);
+						response.setVerified(false);
+						response.setMessage("Image hash exists on contract, but corresponding Token ID was not retrieved.");
+						
+						logger.info("[PhotoUploadController][verifyImage()] Image hash exists on contract, but corresponding Token ID was not retrieved.");
+						
+						return ResponseEntity.status(HttpStatus.OK).body(response);
+					}
+				} else {
+					
+					logger.info("[PhotoUploadController][verifyImage()] imageHash does not exist on contract");
+					
+					// This indicates the hash is in the contract registry (isImageHashExists was true)
+	                // but the token ID lookup failed (returned 0). This is a contract inconsistency.
+					response.setExists(false);
+					response.setVerified(false);
+					response.setMessage("Image hash exists on contract, but corresponding Token ID was not retrieved.");
+					
+					logger.info("[PhotoUploadController][verifyImage()] Image hash exists on contract, but corresponding Token ID was not retrieved.");
+					
+					return ResponseEntity.status(HttpStatus.OK).body(response);					
+				}
+				
 			} else {
+				logger.info("[PhotoUploadController][verifyImage()] objVerificationDetails is null");
 				
-				// Should not happen if buildCache runs correctly and the image exists.
-				// This indicate the hash is in the contract mapping but not in the local cache.
-				response.setExists(true);
+				response.setExists(false);
 				response.setVerified(false);
-				response.setMessage("Image hash exists on contract but not in local cache. Please wait for cache update.");
-				return ResponseEntity.status(HttpStatus.OK).body(response);
+				response.setMessage("Image hash does not exist on contract.");
+				
+				logger.info("[PhotoUploadController][verifyImage()] Image hash exists on contract, but corresponding Token ID was not retrieved.");
+				
+				return ResponseEntity.status(HttpStatus.OK).body(response);					
 			}
+			
+			
+			
+
 			
 			/*
 			 * BigInteger total = nftService.getTotalMinted(); for (BigInteger i =

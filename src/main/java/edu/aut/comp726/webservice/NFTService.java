@@ -17,6 +17,7 @@ import org.web3j.utils.Numeric;
 
 import edu.aut.comp726.webservice.data.ImageNFTContractInfo;
 import edu.aut.comp726.webservice.data.NFTMetadata;
+import edu.aut.comp726.webservice.data.VerificationDetails;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -24,11 +25,17 @@ import java.util.*;
 @Service
 public class NFTService {
 	
+	private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(NFTService.class);
+	
 	@Autowired
 	private Web3j web3j;
 	
 	@Autowired
 	private ImageNFTContractInfo imageNFTContractInfo;
+	
+	public NFTService() {
+		logger.info("NFTService initialized (SLF4J)");
+	}
 	
 	public boolean isImageHashExists(String imageHash) throws Exception {
 		// use the new contract function name: isImageHashExists
@@ -65,6 +72,87 @@ public class NFTService {
 		List<Type> results = FunctionReturnDecoder.decode(response, function.getOutputParameters());
 		
 		return (results.isEmpty() ? BigInteger.ZERO : ((Uint256) results.get(0)).getValue());
+	}
+	
+	public BigInteger getTokenIdByHash(String imageHash) throws Exception {
+		
+		logger.info("[NFTService][getTokenIdByHash()]");
+		
+		// Assume contract function: getTokenIdByHash(bytes32 imageHash) returns (uint256)
+		Function function = new Function(
+				"getTokenIdByHash",
+				List.of(new Bytes32(Numeric.hexStringToByteArray(imageHash))),
+				List.of(new TypeReference<Uint256>() {})
+		);
+		
+		String contractAddress = imageNFTContractInfo.getContractAddress();
+		
+		logger.info("[NFTService][getTokenIdByHash()] contractAddress: " + contractAddress);
+		
+		String encoded = FunctionEncoder.encode(function);
+		
+		logger.info("[NFTService][getTokenIdByHash()] encoded: " + encoded);
+		
+		String response = web3j.ethCall(
+				Transaction.createEthCallTransaction(null, contractAddress, encoded), 
+				DefaultBlockParameterName.LATEST).send().getValue();
+		
+		logger.info("[NFTService][getTokenIdByHash()] response: " + response);
+		
+		List<Type> results = FunctionReturnDecoder.decode(response, function.getOutputParameters());
+		
+		if (results.isEmpty() == true) {
+			logger.info("[NFTService][getTokenIdByHash()] results.isEmpty() is true");
+		} else {
+			logger.info("[NFTService][getTokenIdByHash()] results.isEmpty() is false");
+		}
+		
+		// The contract returns 0 if the hash is not found in the mapping.
+		return (results.isEmpty() ? BigInteger.ZERO : ((Uint256) results.get(0)).getValue());
+	}
+	
+	public VerificationDetails verifyImageByHash(String imageHash) throws Exception {
+		
+		logger.info("[NFTService][verifyImageByHash()]");
+		
+		// 1. Define the Solidity function call, expecting a tuple of (Bool, Uint256)
+		Function function = new Function("verifyImageByHash", 
+				List.of(new Bytes32(Numeric.hexStringToByteArray(imageHash))), 
+				List.of(new TypeReference<Bool>() {}, new TypeReference<Uint256>() {}));
+		
+		String contractAddress = imageNFTContractInfo.getContractAddress();
+		
+		logger.info("[NFTService][verifyImageByHash()] contractAddress: " + contractAddress);
+		
+		String encoded = FunctionEncoder.encode(function);
+		
+		logger.info("[NFTService][verifyImageByHash()] encoded: " + encoded);
+		
+		// 2. Execute the eth_call
+		String response = web3j.ethCall(
+				Transaction.createEthCallTransaction(null, contractAddress, encoded),
+				DefaultBlockParameterName.LATEST).send().getValue();
+		
+		logger.info("[NFTService][verifyImageByHash()] response: " + response);
+		
+		// 3. Decode the tuple response
+		List<Type> results = FunctionReturnDecoder.decode(response, function.getOutputParameters());
+		
+		logger.info("[NFTService][verifyImageByHash()] results.size(): " + results.size());
+		
+		if (results.size() != 2) {
+			logger.info("[NFTService][verifyImageByHash()] Unexpected number of return values from verifyImageByHash.");
+			throw new IllegalStateException("Unexpected number of return values from verifyImageByHash.");
+		}
+		
+		boolean exists = ((Bool) results.get(0)).getValue();
+		BigInteger tokenId = ((Uint256) results.get(1)).getValue();
+		
+		logger.info("[NFTService][verifyImageByHash()] exists: " + exists);
+		logger.info("[NFTService][verifyImageByHash()] tokenId: " + tokenId);
+		VerificationDetails objVerificationDetails = new VerificationDetails(exists, tokenId);
+		
+		return objVerificationDetails;
 	}
 	
 	/*
